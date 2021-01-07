@@ -5,7 +5,7 @@
       <NuxtPicture :loading="true" src="/images/nuxt-white.svg" width="40" height="40" /> -->
 
       <h2>JPEG image inside project</h2>
-      <NuxtPicture placeholder width="400" height="100" src="/images/damavand.jpg" />
+      <NuxtPicture placeholder width="400" height="200" src="/images/damavand.jpg" />
       <!-- <div style="height: 2000px;" /> -->
       <h2>JPEG image from remote url</h2>
       <NuxtPicture placeholder width="600" height="331" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Aconcagua2016.jpg/600px-Aconcagua2016.jpg" />

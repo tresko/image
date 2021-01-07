@@ -68,6 +68,9 @@ export default {
     }
   },
   computed: {
+    ratio () {
+      return parseInt(this.height, 10) / parseInt(this.width, 10)
+    },
     isVisible () {
       if (this.lazyState === LazyState.IDLE) {
         return false
@@ -125,7 +128,8 @@ export default {
         srcset: this.$img(this.src, {
           modifiers: {
             ...this.nModifiers,
-            width: size.width
+            width: size.width,
+            height: isNaN(this.ratio) ? undefined : Math.round(size.width * this.ratio)
           }
         }).url
       }))
@@ -140,17 +144,17 @@ export default {
       if (!this.placeholder) {
         return
       }
+      const width = 30
       return this.$img(this.src, {
         modifiers: {
           ...this.modifiers,
-          width: 30
-          // height: isNaN(ratio) ? undefined : Math.round(30 * ratio)
+          width,
+          height: isNaN(this.ratio) ? undefined : Math.round(width * this.ratio)
         }
       }).url
     },
     sizerHeight () {
-      const ratio = parseInt(this.height, 10) / parseInt(this.width, 10)
-      return isNaN(ratio) ? '100%' : `${ratio * 100}%`
+      return isNaN(this.ratio) ? '100%' : `${this.ratio * 100}%`
     }
   },
   watch: {
