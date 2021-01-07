@@ -1,6 +1,6 @@
 import { resolve } from 'path'
 import consola from 'consola'
-import hasha from 'hasha'
+import hasha from 'hasha/index.js'
 import { name, version } from '../package.json'
 
 export const logger = consola.withScope('@nuxt/image')

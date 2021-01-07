@@ -56,6 +56,7 @@
     "jsdom-global": "latest",
     "nuxt-edge": "latest",
     "playwright": "latest",
+    "rollup-plugin-vue": "^6.0.0",
     "siroc": "latest",
     "standard-version": "latest",
     "ts-loader": "latest",
