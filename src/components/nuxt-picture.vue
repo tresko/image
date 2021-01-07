@@ -2,18 +2,18 @@
   <!--  v-if="layout === 'responsive'" -->
   <div class="wrapper__responsive">
     <div class="sizer__responsive" :style="{ paddingTop: sizerHeight }" />
-    <picture v-show="isVisible">
-      <source
-        v-for="source of sources"
-        v-if="sources.length > 1"
-        :key="source.url"
-        v-bind="source"
-      >
-      <img class="img" :src="sources[0].srcset" v-bind="imgAttributes" decoding="async" @load="onImageLoaded">
-    </picture>
-    <img v-if="placeholder" class="placeholder" :style="{ opacity: isLoaded ? 0 : 0.5 }">
-    <p>isVisible: {{ isVisible }}</p>
-    <p>isLoaded: {{ isLoaded }}</p>
+    <img v-if="placeholder" aria-hidden="true" :src="placeholderSrc" class="placeholder" :style="{ opacity: isLoaded ? 0 : 1 }">
+    <img
+      v-if="isVisible"
+      class="img"
+      :src="sources[0].srcset"
+      :srcset="srcset"
+      v-bind="imgAttributes"
+      decoding="async"
+      :style="{ opacity: isLoaded ? 1 : 0 }"
+      :loading="isLazy ? 'lazy' : 'eager'"
+      @load="onImageLoaded"
+    >
   </div>
 </template>
 
@@ -61,8 +61,10 @@ export default {
     }
   },
   data () {
+    const isLazy = this.loading === true || this.loading === 'lazy'
     return {
-      lazyState: this.isLazy ? LazyState.IDLE : LazyState.LOADED
+      isLazy,
+      lazyState: isLazy ? LazyState.IDLE : LazyState.LOADED
     }
   },
   computed: {
@@ -75,9 +77,6 @@ export default {
     isLoaded () {
       return this.lazyState === LazyState.LOADED
     },
-    isLazy () {
-      return this.loading === true || this.loading === 'lazy'
-    },
     nAlt () {
       return this.alt ?? generateAlt(this.src)
     },
@@ -88,18 +87,18 @@ export default {
         usemap: this.usemap,
         longdesc: this.longdesc,
         ismap: this.ismap,
-        crossorigin: this.crossorigin,
-        width: this.width,
-        height: this.height
+        crossorigin: this.crossorigin
       }
+    },
+    nFormat () {
+      return this.format || getFileExtension(this.src)
     },
     nModifiers () {
       return {
         format: this.format,
         quality: this.quality,
         background: this.background,
-        fit: this.fit,
-        height: this.height
+        fit: this.fit
       }
     },
     fallbackSource () {
@@ -111,7 +110,7 @@ export default {
       })
     },
     sources () {
-      if (this.format === 'svg' || getFileExtension(this.src) === 'svg') {
+      if (this.nFormat === 'svg') {
         return [{ srcset: this.src }]
       }
 
@@ -131,9 +130,27 @@ export default {
         }).url
       }))
     },
+    srcset () {
+      if (this.nFormat === 'svg') {
+        return
+      }
+      return this.sources.map(source => `${source.srcset} ${source.width}w`)
+    },
+    placeholderSrc () {
+      if (!this.placeholder) {
+        return
+      }
+      return this.$img(this.src, {
+        modifiers: {
+          ...this.modifiers,
+          width: 30
+          // height: isNaN(ratio) ? undefined : Math.round(30 * ratio)
+        }
+      }).url
+    },
     sizerHeight () {
-      const height = parseInt(this.height, 10)
-      return isNaN(height) ? '100%;' : `${height}px`
+      const ratio = parseInt(this.height, 10) / parseInt(this.width, 10)
+      return isNaN(ratio) ? '100%' : `${ratio * 100}%`
     }
   },
   watch: {
@@ -168,11 +185,13 @@ export default {
       this.$emit('error', err)
     },
     onImageLoaded () {
-      if (this.lazyState !== LazyState.LOADED) {
-        console.log('lazyState to loaded', this.src)
+      if (this.lazyState === LazyState.LOADED) {
+        return
+      }
+      this.$nextTick(() => {
         this.lazyState = LazyState.LOADED
         this.$emit('load')
-      }
+      })
     },
     onObservered (type) {
       if (type === 'intersect') {
@@ -201,8 +220,11 @@ export default {
   padding: 0;
   min-width: 100%;
   max-width: 100%;
-  min-weight: 100%;
-  max-weight: 100%;
+  min-width: 100%;
+  max-height: 100%;
+  transition: opacity 500ms ease 0s;
+  object-fit: cover;
+  object-position: center center;
 }
 .placeholder {
   position: absolute;
@@ -211,11 +233,10 @@ export default {
   margin: 0;
   width: 100%;
   height: 100%;
-  objectFit: cover;
+  object-fit: cover;
   object-position: center center;
   filter: blur(10px);
-  transition: opacity 1s;
-  background-color: red;
+  transition-delay: 500ms;
 }
 
 .wrapper__responsive {
