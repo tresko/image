@@ -30,7 +30,14 @@ export default {
     nAlt () {
       return this.alt ?? generateAlt(this.src)
     },
-    nModifiers () {
+    nSrc () {
+      return this.$img(this?.src, {
+        provider: this.provider,
+        preset: this.preset,
+        modifiers: this.modifiers
+      }).url
+    },
+    modifiers () {
       return {
         width: this.width,
         height: this.height,
@@ -39,13 +46,6 @@ export default {
         background: this.background,
         fit: this.fit
       }
-    },
-    nSrc () {
-      return this.$img(this?.src, {
-        provider: this.provider,
-        preset: this.preset,
-        modifiers: this.nModifiers
-      }).url
     }
   }
 }

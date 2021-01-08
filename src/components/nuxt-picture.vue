@@ -3,22 +3,42 @@
   <div class="wrapper__responsive">
     <div class="sizer__responsive" :style="{ paddingTop: sizerHeight }" />
     <img v-if="placeholder" aria-hidden="true" :src="placeholderSrc" class="placeholder" :style="{ opacity: isLoaded ? 0 : 1 }">
-    <img
-      v-if="isVisible"
-      class="img"
-      :src="sources[0].srcset"
-      :srcset="srcset"
-      v-bind="imgAttributes"
-      decoding="async"
-      :style="{ opacity: isLoaded ? 1 : 0 }"
-      :loading="isLazy ? 'lazy' : 'eager'"
-      @load="onImageLoaded"
-    >
+    <picture v-if="isVisible">
+      <source v-for="(source, index) of sources" :key="index" v-bind="source">
+      <img
+        v-if="isVisible"
+        class="img"
+        :src="legacySource.srcset[0].split(' ')[0]"
+        :srcset="legacySource.srcset"
+        v-bind="imgAttributes"
+        decoding="async"
+        :style="{ opacity: isLoaded ? 1 : 0 }"
+        :loading="isLazy ? 'lazy' : 'eager'"
+        @load="onImageLoaded"
+      >
+    </picture>
   </div>
 </template>
 
 <script>
 import { generateAlt, getFileExtension, useObserver } from '@nuxt/image/runtime'
+
+/*
+** width or height can be:
+** - number: 300em
+** - string: 300px or auto or 100%
+** - undefined
+*/
+const parseSize = (input = '') => {
+  if (typeof input === 'number') {
+    return input
+  }
+  if (typeof input === 'string') {
+    if (input.replace('px', '').match(/^\d+$/g)) {
+      return parseInt(input, 10)
+    }
+  }
+}
 
 export const LazyState = {
   IDLE: 'idle',
@@ -44,6 +64,7 @@ export default {
 
     // modifiers
     format: { type: String, required: false, default: undefined },
+    legacyFormat: { type: String, required: false, default: undefined },
     quality: { type: [Number, String], required: false, default: undefined },
     background: { type: String, required: false, default: undefined },
     fit: { type: String, required: false, default: undefined },
@@ -69,7 +90,7 @@ export default {
   },
   computed: {
     ratio () {
-      return parseInt(this.height, 10) / parseInt(this.width, 10)
+      return parseSize(this.height) / parseSize(this.width)
     },
     isVisible () {
       if (this.lazyState === LazyState.IDLE) {
@@ -93,10 +114,31 @@ export default {
         crossorigin: this.crossorigin
       }
     },
-    nFormat () {
-      return this.format || getFileExtension(this.src)
+    isTransparent () {
+      return ['png', 'webp', 'gif'].includes(this.originalFormat)
     },
-    nModifiers () {
+    originalFormat () {
+      return getFileExtension(this.src)
+    },
+    // <nuxt-picture src="/images/example.jpg" />
+    // nFormat = webp
+    // nLegacyFormat = jpg
+    nFormat () {
+      if (this.format) { return this.format }
+      if (this.originalFormat === 'svg') { return 'svg' }
+      return 'webp'
+    },
+    nLegacyFormat () {
+      if (this.legacyFormat) {
+        return this.legacyFormat
+      }
+      const formats = {
+        webp: this.isTransparent ? 'png' : 'jpeg',
+        svg: 'png'
+      }
+      return formats[this.nFormat] || this.originalFormat
+    },
+    modifiers () {
       return {
         format: this.format,
         quality: this.quality,
@@ -104,35 +146,54 @@ export default {
         fit: this.fit
       }
     },
-    fallbackSource () {
-      return this.$img(this.src, {
-        modifiers: {
-          ...this.nModifiers,
-          width: this.width
-        }
-      })
+    legacySource () {
+      return this.sources[this.sources.length - 1]
+      // return this.sources.find(s => s.legacy)
+      // return this.sources.find(s => s.format === this.nLegacyFormat)
     },
     sources () {
       if (this.nFormat === 'svg') {
-        return [{ srcset: this.src }]
+        return [{
+          srcset: this.src
+        }]
       }
 
-      const sizes = this.$img.options.sizes.map(width => ({
-        width,
-        breakpoint: width,
-        media: `(max-width: ${width}px)`
-      }))
+      const breakpoints = this.$img.options.sizes
+      const densities = [1, 2]
+      const formats = this.nLegacyFormat !== this.nFormat ? [this.nFormat, this.nLegacyFormat] : [this.nFormat]
 
-      return sizes.map(size => ({
-        ...size,
-        srcset: this.$img(this.src, {
-          modifiers: {
-            ...this.nModifiers,
-            width: size.width,
-            height: isNaN(this.ratio) ? undefined : Math.round(size.width * this.ratio)
-          }
-        }).url
-      }))
+      const variants = []
+
+      for (const format of formats) {
+        for (const width of breakpoints) {
+          variants.push({
+            width,
+            height: this.ratio ? Math.round(width * this.ratio) : parseSize(this.height),
+            media: `(max-width: ${width}px)`,
+            format
+          })
+        }
+      }
+
+      const sources = variants.map((variant) => {
+        return {
+          media: variant.media,
+          type: `image/${variant.format}`,
+          srcset: densities.map((density) => {
+            const { url } = this.$img(this.src, {
+              modifiers: {
+                ...this.modifiers,
+                width: variant.width * density,
+                height: variant.height ? variant.height * density : undefined,
+                format: variant.format
+              }
+            })
+            return `${url} ${density}x`
+          })
+        }
+      })
+
+      return sources
     },
     srcset () {
       if (this.nFormat === 'svg') {
@@ -144,17 +205,21 @@ export default {
       if (!this.placeholder) {
         return
       }
+      // Custom placeholder src
+      if (typeof this.placeholder === 'string') {
+        return this.placeholder
+      }
       const width = 30
       return this.$img(this.src, {
         modifiers: {
           ...this.modifiers,
           width,
-          height: isNaN(this.ratio) ? undefined : Math.round(width * this.ratio)
+          height: this.ratio ? Math.round(width * this.ratio) : undefined
         }
       }).url
     },
     sizerHeight () {
-      return isNaN(this.ratio) ? '100%' : `${this.ratio * 100}%`
+      return this.ratio ? `${this.ratio * 100}%` : '100%'
     }
   },
   watch: {
@@ -217,14 +282,17 @@ export default {
   left: 0;
   bottom: 0;
   right: 0;
-  width: 100%;
+  width: 0px;
+  height: 0px;
   box-sizing: border-box;
   border: none;
   margin: auto;
+  inset: 0px;
+  display: block;
   padding: 0;
   min-width: 100%;
   max-width: 100%;
-  min-width: 100%;
+  min-height: 100%;
   max-height: 100%;
   transition: opacity 500ms ease 0s;
   object-fit: cover;
