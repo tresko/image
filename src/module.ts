@@ -1,7 +1,7 @@
 import { resolve } from 'path'
 import defu from 'defu'
 import type { ModuleOptions } from './types'
-import { pick, pkg, pkgDir } from './utils'
+import { pick, pkg } from './utils'
 import { setupStaticGeneration } from './generate'
 import { resolveProviders } from './provider'
 import { createIPXMiddleware } from './ipx'
