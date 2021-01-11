@@ -21,24 +21,7 @@
 </template>
 
 <script>
-import { generateAlt, getFileExtension, useObserver } from '@nuxt/image/runtime'
-
-/*
-** width or height can be:
-** - number: 300em
-** - string: 300px or auto or 100%
-** - undefined
-*/
-const parseSize = (input = '') => {
-  if (typeof input === 'number') {
-    return input
-  }
-  if (typeof input === 'string') {
-    if (input.replace('px', '').match(/^\d+$/g)) {
-      return parseInt(input, 10)
-    }
-  }
-}
+import { generateAlt, getFileExtension, useObserver, parseSize } from '@nuxt/image/runtime'
 
 export const LazyState = {
   IDLE: 'idle',
