@@ -3,7 +3,7 @@ menuTitle: Twicpics
 title: Twicpics Provider
 description: 'Nuxt Image internally use Twicpics as static provider.'
 category: Providers
-position: 405
+position: 406
 ---
 
 Integration between [Twicpics](https://www.twicpics.com) and the image module.

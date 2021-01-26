@@ -20,4 +20,5 @@ If you are looking for a specific provider outside of this list, you can [create
 - [`Fastly`](/providers/fastly)
 - [`Imgix`](/providers/imgix)
 - [`IPX`](/providers/ipx) (selfhosted)
+- [`Sanity`](/providers/sanity)
 - [`Twicpics`](/providers/twicpics)
